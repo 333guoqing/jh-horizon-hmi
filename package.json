@@ -1,0 +1,22 @@
+{
+  "name": "jh-horizon-hmi",
+  "main": "main.cjs", 
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"npm run dev\" \"electron .\"",
+    "electron:build": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.jiehang.hmi",
+    "productName": "中科捷航视界",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "portable",
+      "requestedExecutionLevel": "highestAvailable"
+    }
+  }
+}

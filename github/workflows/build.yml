@@ -1,0 +1,36 @@
+name: Build/Release Electron App
+
+on:
+  push:
+    branches:
+      - main  # 当你推送代码到 main 分支时触发
+
+jobs:
+  release:
+    runs-on: windows-latest  # 关键：调用 GitHub 的 Windows 云服务器
+
+    steps:
+      - name: Check out git repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Vue App
+        run: npm run build
+
+      - name: Build Electron App
+        run: npx electron-builder --win  # 在云端执行 Windows 打包
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jh-hmi-windows-exe
+          path: release/*.exe  # 自动把你生成的 exe 上传到云端供你下载
