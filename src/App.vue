@@ -51,6 +51,12 @@
           </button>
           <button @click="toggleWireframe" class="bg-slate-800 border border-cyan-600 text-cyan-400 px-4 py-2 text-[10px] uppercase">切换网格视图</button>
           <button @click="resetModel" class="bg-slate-800 border border-slate-600 text-slate-400 px-4 py-2 text-[10px] uppercase">重置数据</button>
+          <div class="flex items-center gap-2 bg-slate-900/90 border border-cyan-900 px-3 py-2 text-[10px]">
+            <span class="uppercase opacity-70">倒计时</span>
+            <input v-model.number="countdownPresetSec" @change="applyCountdownPreset" type="number" min="1" class="w-16 bg-black/70 border border-cyan-800 text-cyan-300 px-1 py-0.5 outline-none" />
+            <span class="opacity-50">秒</span>
+            <span class="font-bold tabular-nums text-xs" :class="countdownRemainingSec <= 5 ? 'text-red-500' : 'text-cyan-300'">{{ countdownRemainingSec }}s</span>
+          </div>
         </div>
 
         <!-- 3D 侧边色谱图例 (Color Bar) -->
@@ -116,6 +122,8 @@ const isTesting = ref(false);
 const currentTime = ref('');
 const samplingRate = ref(63);
 const maxZ = ref(0);
+const countdownPresetSec = ref(60);
+const countdownRemainingSec = ref(60);
 const threeContainer = ref(null);
 const physicsParams = reactive({
   "Mises Strain": "0.0000",
@@ -130,6 +138,7 @@ const physicsParams = reactive({
 
 // --- Three.js 变量 ---
 let scene, camera, renderer, geometry, mesh, controls, animationId;
+let currentTimeTimerId, countdownTimerId;
 
 // 初始化 3D 环境
 const initThree = () => {
@@ -229,10 +238,52 @@ const animate = () => {
 };
 
 // 交互函数
-const startStressTest = () => { isTesting.value = !isTesting.value; };
+const normalizeCountdownValue = () => {
+  const safeValue = Math.max(1, Math.floor(Number(countdownPresetSec.value) || 1));
+  countdownPresetSec.value = safeValue;
+  return safeValue;
+};
+const resetCountdown = () => {
+  countdownRemainingSec.value = normalizeCountdownValue();
+};
+const stopCountdown = () => {
+  if (!countdownTimerId) return;
+  clearInterval(countdownTimerId);
+  countdownTimerId = null;
+};
+const runCountdown = () => {
+  stopCountdown();
+  resetCountdown();
+  countdownTimerId = setInterval(() => {
+    if (countdownRemainingSec.value <= 1) {
+      countdownRemainingSec.value = 0;
+      isTesting.value = false;
+      stopCountdown();
+      return;
+    }
+    countdownRemainingSec.value -= 1;
+  }, 1000);
+};
+const applyCountdownPreset = () => {
+  normalizeCountdownValue();
+  if (!isTesting.value) {
+    resetCountdown();
+  }
+};
+const startStressTest = () => {
+  isTesting.value = !isTesting.value;
+  if (isTesting.value) {
+    runCountdown();
+    return;
+  }
+  stopCountdown();
+  resetCountdown();
+};
 const toggleWireframe = () => { mesh.material.wireframe = !mesh.material.wireframe; };
 const resetModel = () => {
   isTesting.value = false;
+  stopCountdown();
+  resetCountdown();
   const positions = geometry.attributes.position;
   for (let i = 0; i < positions.count; i++) { positions.setZ(i, 0); }
   geometry.attributes.position.needsUpdate = true;
@@ -244,7 +295,9 @@ const simpleAlert = (m) => alert(m);
 // 生命周期
 onMounted(() => {
   initThree();
-  setInterval(() => { currentTime.value = new Date().toLocaleString(); }, 1000);
+  resetCountdown();
+  currentTime.value = new Date().toLocaleString();
+  currentTimeTimerId = setInterval(() => { currentTime.value = new Date().toLocaleString(); }, 1000);
   window.addEventListener('resize', () => {
     camera.aspect = threeContainer.value.clientWidth / threeContainer.value.clientHeight;
     camera.updateProjectionMatrix();
@@ -253,6 +306,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  stopCountdown();
+  clearInterval(currentTimeTimerId);
   cancelAnimationFrame(animationId);
   renderer.dispose();
 });
