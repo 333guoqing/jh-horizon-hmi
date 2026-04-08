@@ -28,7 +28,7 @@
   },
   "build": {
     "appId": "com.jiehang.hmi",
-    "productName": "中科捷航v2",
+    "productName": "中科捷航v1",
     "directories": {
       "output": "release"
     },
